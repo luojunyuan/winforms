@@ -134,7 +134,7 @@ public struct Message : IEquatable<Message>, IHandle<HWND>
 
     public override readonly int GetHashCode() => HashCode.Combine(HWnd, Msg);
 
-    public override readonly string ToString() => MessageDecoder.ToString(this);
+    // public override readonly string ToString() => MessageDecoder.ToString(this);
 
     internal MSG ToMSG() => new()
     {

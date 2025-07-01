@@ -102,16 +102,43 @@ public unsafe partial class NativeWindow : MarshalByRefObject, IWin32Window, IHa
             // a WM_NULL to the window. Why?  Because if the main ui thread is INSIDE
             // the wndproc for this control during our unsubclass, then we could AV
             // when control finally reaches us.
+            //if (PInvoke.IsWindow(handle))
+            //{
+            //    uint id = PInvokeCore.GetWindowThreadProcessId(handle, out _);
+            //    Application.ThreadContext? context = Application.ThreadContext.FromId(id);
+            //    nint threadHandle = context is null ? 0 : context.Handle;
+
+            //    if (threadHandle != 0)
+            //    {
+            //        uint exitCode;
+            //        PInvoke.GetExitCodeThread((HANDLE)threadHandle, &exitCode);
+            //        if (!AppDomain.CurrentDomain.IsFinalizingForUnload() && (NTSTATUS)exitCode == NTSTATUS.STATUS_PENDING)
+            //        {
+            //            PInvoke.SendMessageTimeout(
+            //                handle,
+            //                (uint)RegisteredMessage.WM_UIUNSUBCLASS,
+            //                default,
+            //                default,
+            //                SEND_MESSAGE_TIMEOUT_FLAGS.SMTO_ABORTIFHUNG,
+            //                100,
+            //                null);
+            //        }
+            //    }
+            //}
+
+            // ↓
+
+            // 在取消子类化之前发送消息，防止主 UI 线程正在处理这个控件的消息时出现问题
             if (PInvoke.IsWindow(handle))
             {
-                uint id = PInvokeCore.GetWindowThreadProcessId(handle, out _);
-                Application.ThreadContext? context = Application.ThreadContext.FromId(id);
-                nint threadHandle = context is null ? 0 : context.Handle;
+                uint threadId = PInvokeCore.GetWindowThreadProcessId(handle, out _);
+                nint threadHandle = PInvoke.OpenThread(THREAD_ACCESS_RIGHTS.THREAD_QUERY_INFORMATION, false, threadId);
 
                 if (threadHandle != 0)
                 {
                     uint exitCode;
                     PInvoke.GetExitCodeThread((HANDLE)threadHandle, &exitCode);
+
                     if (!AppDomain.CurrentDomain.IsFinalizingForUnload() && (NTSTATUS)exitCode == NTSTATUS.STATUS_PENDING)
                     {
                         PInvoke.SendMessageTimeout(
@@ -123,6 +150,8 @@ public unsafe partial class NativeWindow : MarshalByRefObject, IWin32Window, IHa
                             100,
                             null);
                     }
+
+                    PInvoke.CloseHandle((HANDLE)threadHandle);
                 }
             }
 
@@ -172,7 +201,9 @@ public unsafe partial class NativeWindow : MarshalByRefObject, IWin32Window, IHa
                 if (s_defaultWindowProc == 0)
                 {
                     // Cache the default windows procedure address
-                    s_defaultWindowProc = PInvoke.GetProcAddress(hModule, (PCSTR)ptr);
+                    // s_defaultWindowProc = PInvoke.GetProcAddress(hModule, (PCSTR)ptr);
+                    // ↓
+                    s_defaultWindowProc = PInvoke.GetProcAddress(hModule, "DefWindowProcW");
 
                     if (s_defaultWindowProc == 0)
                     {
@@ -464,7 +495,9 @@ public unsafe partial class NativeWindow : MarshalByRefObject, IWin32Window, IHa
                 }
 
                 Debug.WriteLineIf(
-                    CoreSwitches.PerfTrack.Enabled,
+                    // CoreSwitches.PerfTrack.Enabled,
+                    // ↓
+                    true,
                     $"Handle created of type '{cp.ClassName}' with caption '{cp.Caption}' from NativeWindow of type '{GetType().FullName}'");
 
                 if (createResult.IsNull)

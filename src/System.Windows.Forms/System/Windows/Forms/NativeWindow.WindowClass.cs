@@ -142,27 +142,35 @@ public partial class NativeWindow
                 // A system defined Window class was specified, get its info.
                 fixed (char* n = localClassName)
                 {
-                    if (!PInvoke.GetClassInfo(HINSTANCE.Null, n, &windowClass))
+                    // ｜ if (!PInvoke.GetClassInfo(HINSTANCE.Null, n, &windowClass))
+                    // ↓
+                    if (!PInvoke.GetClassInfo(HINSTANCE.Null, n, out windowClass))
                     {
                         throw new Win32Exception(Marshal.GetLastWin32Error(), SR.InvalidWndClsName);
                     }
                 }
 
                 localClassName = _className;
-                _defaultWindProc = (nint)windowClass.lpfnWndProc;
+                // ｜ _defaultWindProc = (nint)windowClass.lpfnWndProc;
+                // ↓
+                _defaultWindProc = Marshal.GetFunctionPointerForDelegate(windowClass.lpfnWndProc!);
             }
 
             _windowClassName = GetFullClassName(localClassName);
             _windProc = Callback;
-            nint callback = Marshal.GetFunctionPointerForDelegate(_windProc);
-            windowClass.lpfnWndProc = (delegate* unmanaged[Stdcall]<HWND, uint, WPARAM, LPARAM, LRESULT>)callback;
+            // ｜ nint callback = Marshal.GetFunctionPointerForDelegate(_windProc);
+            // ｜ windowClass.lpfnWndProc = (delegate* unmanaged[Stdcall]<HWND, uint, WPARAM, LPARAM, LRESULT>)callback;
+            // ↓
+            windowClass.lpfnWndProc = _windProc;
             windowClass.hInstance = PInvoke.GetModuleHandle((PCWSTR)null);
 
             fixed (char* c = _windowClassName)
             {
                 windowClass.lpszClassName = c;
 
-                if (PInvoke.RegisterClass(&windowClass) == 0)
+                // ｜ if (PInvoke.RegisterClass(&windowClass) == 0)
+                // ↓
+                if (PInvoke.RegisterClass(windowClass) == 0)
                 {
                     _windProc = null;
                     throw new Win32Exception();
