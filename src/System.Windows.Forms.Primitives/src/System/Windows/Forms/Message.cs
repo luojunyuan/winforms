@@ -82,11 +82,12 @@ public struct Message : IEquatable<Message>, IHandle<HWND>
     readonly HWND IHandle<HWND>.Handle => HWND;
 
     /// <summary>
-    ///  Gets the <see cref="LParam"/> value, and converts the value to an object.
+    ///  Gets the <see cref="LParam"/> value, and converts the value to an object of type T.
     /// </summary>
-    public readonly object? GetLParam(
+    public readonly T? GetLParam<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
-        Type cls) => Marshal.PtrToStructure(LParamInternal, cls);
+    T>() where T : class => Marshal.PtrToStructure<T>(LParamInternal);
+
 
     internal static unsafe Message Create(MSG* msg)
         => Create(msg->hwnd, msg->message, msg->wParam, msg->lParam);

@@ -9,7 +9,7 @@ namespace Windows.Win32;
 internal static partial class PInvoke
 {
     /// <inheritdoc cref="CreateWindowEx(WINDOW_EX_STYLE, string, string, WINDOW_STYLE, int, int, int, int, HWND, HMENU, HINSTANCE, void*)"/>
-    public static unsafe HWND CreateWindowEx(
+    public static unsafe HWND CreateWindowEx<T>(
         WINDOW_EX_STYLE dwExStyle,
         string? lpClassName,
         string? lpWindowName,
@@ -21,7 +21,7 @@ internal static partial class PInvoke
         HWND hWndParent,
         HMENU hMenu,
         HINSTANCE hInstance,
-        object? lpParam)
+        T? lpParam) where T : class
     {
         fixed (char* cn = lpClassName)
         fixed (char* wn = lpWindowName)
@@ -42,7 +42,7 @@ internal static partial class PInvoke
 
             if (lpParam is StringBuilder builder)
             {
-                lpParam = builder.ToString();
+                return CreateWindowEx(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, builder.ToString());
             }
 
             if (lpParam is string stringValue)
@@ -53,7 +53,7 @@ internal static partial class PInvoke
                 }
             }
 
-            int size = Marshal.SizeOf(lpParam);
+            int size = Marshal.SizeOf<T>();
             nint native = Marshal.AllocCoTaskMem(size);
             try
             {
@@ -65,7 +65,7 @@ internal static partial class PInvoke
             {
                 if (native != 0)
                 {
-                    Marshal.DestroyStructure(native, lpParam.GetType());
+                    Marshal.DestroyStructure<T>(native);
                     Marshal.FreeCoTaskMem(native);
                 }
             }
